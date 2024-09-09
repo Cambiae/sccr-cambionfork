@@ -111,30 +111,41 @@ public class Beam : WeaponAbility
         if (firing)
             timer += Time.deltaTime;
 
-        if (timer > 0.1 * numShots && numShots < MAX_BOUNCES)
+        if (timer > 0.1f * numShots && numShots < MAX_BOUNCES)
         {
             var vec = numShots == 0 ? transform.position : line.GetPosition(numShots);
-            var ents = GetClosestTargets(MAX_BOUNCES, vec);
-            Transform closestEntity = null;
-            foreach (var ent in ents)
-            {
-                if (targetArray.Contains(ent))
-                {
-                    continue;
-                }
-                closestEntity = ent;
-                break;
-            }
+            var closestEntity = targetingSystem.GetTarget();
 
-            if (!closestEntity)
-            {
-                numShots = 0;
-            }
-            else
+            if (closestEntity && !targetArray.Contains(closestEntity) && numShots == 0)
             {
                 targetArray.Add(closestEntity);
                 FireBeam(closestEntity.position);
                 numShots++;
+            }
+            else
+            {
+                var ents = GetClosestTargets(MAX_BOUNCES, vec);
+                closestEntity = null;
+                foreach (var ent in ents)
+                {
+                    if (targetArray.Contains(ent))
+                    {
+                        continue;
+                    }
+                    closestEntity = ent;
+                    break;
+                }
+
+                if (!closestEntity)
+                {
+                    //numShots = 0;
+                }
+                else
+                {
+                    targetArray.Add(closestEntity);
+                    FireBeam(closestEntity.position);
+                    numShots++;
+                }
             }
         }
 
@@ -186,7 +197,6 @@ public class Beam : WeaponAbility
             targetPos = nextTargetPart.transform.position;
         }
 
-
         if (line.positionCount == 0) 
         {
             timer = 0; // start the timer
@@ -213,6 +223,11 @@ public class Beam : WeaponAbility
         var residue = targetToAttack.GetComponent<IDamageable>().TakeShellDamage(GetDamage(), 0, GetComponentInParent<Entity>());
         // deal instant damage
 
+        if (nextTargetPart && nextTargetPart.craft.gameObject != targetToAttack.gameObject)
+        {
+            nextTargetPart = null;
+        }
+
         if (nextTargetPart)
         {
             nextTargetPart.TakeDamage(residue);
@@ -222,9 +237,9 @@ public class Beam : WeaponAbility
         ActivationCosmetic(victimPos);
     }
 
-    protected override Transform[] GetClosestTargets(int num, Vector3 pos, bool dronesAreFree = false)
+    protected Transform[] GetClosestTargets(int num, Vector3 pos, bool dronesAreFree = false)
     {
-        var list = base.GetClosestTargets(num, pos);
+        var list = targetingSystem.GetClosestTargets(num, pos);
         if (list.Length > 0)
         {
             foreach (var ent in list)
